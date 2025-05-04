@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Sửa từ vựng</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; text-align: center; }
+        .form-container { max-width: 400px; margin: auto; }
+        input, button { display: block; width: 100%; padding: 10px; margin: 10px 0; }
+        button { background-color: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; }
+        button:hover { background-color: #218838; }
+        a { color: #007BFF; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <h1>Sửa từ vựng</h1>
+    <div class="form-container">
+        <form method="POST">
+            {% if table == "english" %}
+            <input type="text" name="english_word" value="{{ word[1] }}" placeholder="Từ tiếng Anh" required>
+            {% else %}
+            <input type="text" name="french_word" value="{{ word[1] }}" placeholder="Từ tiếng Pháp" required>
+            {% endif %}
+            <input type="text" name="vietnamese_meaning" value="{{ word[2] }}" placeholder="Nghĩa tiếng Việt" required>
+            <button type="submit">Cập nhật</button>
+        </form>
+        <a href="/">← Quay lại trang chủ</a>
+    </div>
+</body>
+</html>

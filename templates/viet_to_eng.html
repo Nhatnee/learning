@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>🌱 Học Từ Vựng: Việt → Anh</title>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background: linear-gradient(to right, #dbeafe, #f0f9ff);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .card {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            max-width: 420px;
+            width: 90%;
+            text-align: center;
+            animation: fadeIn 0.6s ease-in-out;
+        }
+
+        .card h1 {
+            font-size: 28px;
+            margin-bottom: 20px;
+            color: #1e40af;
+        }
+
+        .card h2 {
+            font-size: 22px;
+            color: #0f172a;
+            margin: 15px 0;
+        }
+
+        input[type="text"] {
+            width: 90%;
+            padding: 12px;
+            font-size: 18px;
+            border: 2px solid #93c5fd;
+            border-radius: 10px;
+            outline: none;
+            margin-bottom: 10px;
+            transition: 0.2s;
+        }
+
+        input[type="text"]:focus {
+            border-color: #3b82f6;
+        }
+
+        .btn {
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 10px;
+            margin: 8px 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: 0.3s;
+        }
+
+        .btn:hover {
+            background-color: #2563eb;
+            transform: translateY(-2px);
+        }
+
+        #feedback {
+            font-size: 16px;
+            font-weight: bold;
+            margin: 8px;
+        }
+
+        .success { color: #10b981; }
+        .error { color: #ef4444; }
+
+        .footer {
+            margin-top: 20px;
+        }
+
+        .back-home {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 10px 20px;
+            background-color: #facc15;
+            color: #1e293b;
+            border-radius: 8px;
+            font-weight: bold;
+            text-decoration: none;
+            transition: 0.3s;
+        }
+
+        .back-home:hover {
+            background-color: #fbbf24;
+            transform: scale(1.05);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🌱 Tiếng Việt → Tiếng Anh</h1>
+        <h2 id="vietnamese-meaning">Đang tải từ...</h2>
+        <input type="text" id="answer" placeholder="Nhập từ tiếng Anh của bạn">
+        <div id="feedback"></div>
+        <div>
+            <button class="btn" onclick="checkAnswer()">🎯 Kiểm tra</button>
+            <button class="btn" onclick="speakWord()">🔊 Phát âm</button>
+            <button class="btn" onclick="nextWord()">➡️ Tiếp theo</button>
+        </div>
+        <div class="footer">
+            <a href="/" class="back-home">← Quay lại trang chủ</a>
+        </div>
+    </div>
+
+    <script>
+        let currentId = 0;
+        let currentEnglishWord = "";
+
+        function speakWord() {
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(currentEnglishWord);
+                utterance.lang = 'en-US';
+                speechSynthesis.speak(utterance);
+            } else {
+                alert("Trình duyệt của bạn không hỗ trợ phát âm.");
+            }
+        }
+
+        function checkAnswer() {
+            const userAnswer = document.getElementById("answer").value.trim().toLowerCase();
+            const correctAnswer = currentEnglishWord.toLowerCase();
+
+            if (userAnswer === correctAnswer) {
+                document.getElementById("feedback").innerHTML = "<span class='success'>✅ Chính xác!</span>";
+                setTimeout(() => {
+                    document.getElementById("answer").value = "";
+                    document.getElementById("feedback").innerHTML = "";
+                    nextWord();
+                }, 800);
+            } else {
+                document.getElementById("feedback").innerHTML = "<span class='error'>❌ Chưa đúng, thử lại!</span>";
+            }
+        }
+
+        function nextWord() {
+            fetch(`/next-word/${currentId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert("Hết từ để học!");
+                        document.getElementById("vietnamese-meaning").innerText = "🎉 Hết từ!";
+                        document.getElementById("answer").disabled = true;
+                        document.getElementById("answer").placeholder = "";
+                        currentEnglishWord = "";
+                    } else {
+                        currentId = data.id;
+                        document.getElementById("vietnamese-meaning").innerText = data.vietnamese_meaning;
+                        currentEnglishWord = data.english_word;
+                        document.getElementById("answer").value = "";
+                        document.getElementById("answer").disabled = false;
+                        document.getElementById("feedback").innerText = "";
+                    }
+                });
+        }
+
+        // Bắt đầu từ đầu khi tải trang
+        nextWord();
+    </script>
+</body>
+</html>
