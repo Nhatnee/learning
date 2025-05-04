@@ -4,21 +4,17 @@ import atexit
 
 app = Flask(__name__)
 
-# Kết nối MySQL
-db = mysql.connector.connect(
+import psycopg2
+
+conn = psycopg2.connect(
     host="dpg-d0bjrhhr0fns73dhngg0-a",
     port=5432,
     user="learning_8ayz_user",
     password="5Tf4wiqbQbQRmfG0umgU5vM3pDs4jJ2x",
-    database="learning_8ayz"
+    dbname="learning_8ayz"
 )
-cursor = db.cursor()
+cursor = conn.cursor()
 
-# Đóng kết nối MySQL khi ứng dụng dừng
-def close_db():
-    cursor.close()
-    db.close()
-atexit.register(close_db)
 
 # Trang chủ - Thêm từ tiếng Anh + tiếng Pháp và hiển thị danh sách
 @app.route("/", methods=["GET", "POST"])
