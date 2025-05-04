@@ -1,11 +1,10 @@
 from flask import Flask, render_template, request, jsonify, redirect
-import mysql.connector
+import psycopg2
 import atexit
 
 app = Flask(__name__)
 
-import psycopg2
-
+# Kết nối cơ sở dữ liệu PostgreSQL
 conn = psycopg2.connect(
     host="dpg-d0bjrhhr0fns73dhngg0-a",
     port=5432,
@@ -15,6 +14,12 @@ conn = psycopg2.connect(
 )
 cursor = conn.cursor()
 
+# Đảm bảo đóng kết nối khi ứng dụng kết thúc
+def close_db_connection():
+    cursor.close()
+    conn.close()
+
+atexit.register(close_db_connection)
 
 # Trang chủ - Thêm từ tiếng Anh + tiếng Pháp và hiển thị danh sách
 @app.route("/", methods=["GET", "POST"])
@@ -24,36 +29,53 @@ def home():
         vietnamese_meaning = request.form.get("vietnamese_meaning", "").strip()
         french_word = request.form.get("french_word", "").strip()
         
-        if english_word and vietnamese_meaning:
-            cursor.execute("INSERT INTO learning (english_word, vietnamese_meaning) VALUES (%s, %s)",
-                           (english_word, vietnamese_meaning))
-            db.commit()
+        try:
+            if english_word and vietnamese_meaning:
+                cursor.execute("INSERT INTO learning (english_word, vietnamese_meaning) VALUES (%s, %s)",
+                               (english_word, vietnamese_meaning))
+                conn.commit()
 
-        if french_word and vietnamese_meaning:
-            cursor.execute("INSERT INTO french_learning (french_word, vietnamese_meaning) VALUES (%s, %s)",
-                           (french_word, vietnamese_meaning))
-            db.commit()
+            if french_word and vietnamese_meaning:
+                cursor.execute("INSERT INTO french_learning (french_word, vietnamese_meaning) VALUES (%s, %s)",
+                               (french_word, vietnamese_meaning))
+                conn.commit()
+        except Exception as e:
+            print(f"Error inserting data: {e}")
+            conn.rollback()
 
-    cursor.execute("SELECT id, english_word, vietnamese_meaning FROM learning ORDER BY id ASC")
-    english_words = cursor.fetchall()
+    try:
+        cursor.execute("SELECT id, english_word, vietnamese_meaning FROM learning ORDER BY id ASC")
+        english_words = cursor.fetchall()
 
-    cursor.execute("SELECT id, french_word, vietnamese_meaning FROM french_learning ORDER BY id ASC")
-    french_words = cursor.fetchall()
+        cursor.execute("SELECT id, french_word, vietnamese_meaning FROM french_learning ORDER BY id ASC")
+        french_words = cursor.fetchall()
+    except Exception as e:
+        print(f"Error fetching data: {e}")
+        english_words = []
+        french_words = []
 
     return render_template("home.html", english_words=english_words, french_words=french_words)
 
 # Xóa từ tiếng Anh
 @app.route("/delete/<int:word_id>")
 def delete_word(word_id):
-    cursor.execute("DELETE FROM learning WHERE id = %s", (word_id,))
-    db.commit()
+    try:
+        cursor.execute("DELETE FROM learning WHERE id = %s", (word_id,))
+        conn.commit()
+    except Exception as e:
+        print(f"Error deleting word: {e}")
+        conn.rollback()
     return redirect("/")
 
 # Xóa từ tiếng Pháp
 @app.route("/delete-fr/<int:word_id>")
 def delete_french_word(word_id):
-    cursor.execute("DELETE FROM french_learning WHERE id = %s", (word_id,))
-    db.commit()
+    try:
+        cursor.execute("DELETE FROM french_learning WHERE id = %s", (word_id,))
+        conn.commit()
+    except Exception as e:
+        print(f"Error deleting French word: {e}")
+        conn.rollback()
     return redirect("/")
 
 # Sửa từ (dùng chung cho cả tiếng Anh và tiếng Pháp)
@@ -71,28 +93,45 @@ def edit_word(table, word_id):
     if request.method == "POST":
         word = request.form[word_field].strip()
         vietnamese_meaning = request.form["vietnamese_meaning"].strip()
-        cursor.execute(f"UPDATE {table_name} SET {word_field} = %s, vietnamese_meaning = %s WHERE id = %s",
-                       (word, vietnamese_meaning, word_id))
-        db.commit()
+        try:
+            cursor.execute(f"UPDATE {table_name} SET {word_field} = %s, vietnamese_meaning = %s WHERE id = %s",
+                           (word, vietnamese_meaning, word_id))
+            conn.commit()
+        except Exception as e:
+            print(f"Error updating word: {e}")
+            conn.rollback()
         return redirect("/")
 
-    cursor.execute(f"SELECT id, {word_field}, vietnamese_meaning FROM {table_name} WHERE id = %s", (word_id,))
-    word = cursor.fetchone()
+    try:
+        cursor.execute(f"SELECT id, {word_field}, vietnamese_meaning FROM {table_name} WHERE id = %s", (word_id,))
+        word = cursor.fetchone()
+    except Exception as e:
+        print(f"Error fetching word for edit: {e}")
+        word = None
+
     return render_template("edit_word.html", word=word, table=table)
 
 # API lấy từ tiếp theo (tiếng Anh)
 @app.route("/next-word/<int:last_id>")
 def next_word(last_id):
-    cursor.execute("SELECT id, english_word, vietnamese_meaning FROM learning WHERE id > %s ORDER BY id ASC LIMIT 1", (last_id,))
-    word = cursor.fetchone()
-    return jsonify({"id": word[0], "english_word": word[1], "vietnamese_meaning": word[2]}) if word else jsonify({"error": "No more words"})
+    try:
+        cursor.execute("SELECT id, english_word, vietnamese_meaning FROM learning WHERE id > %s ORDER BY id ASC LIMIT 1", (last_id,))
+        word = cursor.fetchone()
+        return jsonify({"id": word[0], "english_word": word[1], "vietnamese_meaning": word[2]}) if word else jsonify({"error": "No more words"})
+    except Exception as e:
+        print(f"Error fetching next English word: {e}")
+        return jsonify({"error": "Error fetching word"})
 
 # API lấy từ tiếp theo (tiếng Pháp)
 @app.route("/next-word-fr/<int:last_id>")
 def next_french_word(last_id):
-    cursor.execute("SELECT id, french_word, vietnamese_meaning FROM french_learning WHERE id > %s ORDER BY id ASC LIMIT 1", (last_id,))
-    word = cursor.fetchone()
-    return jsonify({"id": word[0], "french_word": word[1], "vietnamese_meaning": word[2]}) if word else jsonify({"error": "No more words"})
+    try:
+        cursor.execute("SELECT id, french_word, vietnamese_meaning FROM french_learning WHERE id > %s ORDER BY id ASC LIMIT 1", (last_id,))
+        word = cursor.fetchone()
+        return jsonify({"id": word[0], "french_word": word[1], "vietnamese_meaning": word[2]}) if word else jsonify({"error": "No more words"})
+    except Exception as e:
+        print(f"Error fetching next French word: {e}")
+        return jsonify({"error": "Error fetching word"})
 
 @app.route("/viet-to-eng")
 def viet_to_eng():
